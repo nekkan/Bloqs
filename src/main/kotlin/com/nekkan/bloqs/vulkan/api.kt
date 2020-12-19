@@ -3,36 +3,18 @@
 package com.nekkan.bloqs.vulkan
 
 import com.nekkan.bloqs.context.GlfwContext
+import com.nekkan.bloqs.free
 import com.nekkan.bloqs.utils.ApplicationVersion
 import org.lwjgl.glfw.GLFW.*
-import org.lwjgl.system.MemoryUtil
+import org.lwjgl.system.MemoryUtil.*
+import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.EXTDebugReport.VK_ERROR_VALIDATION_FAILED_EXT
 import org.lwjgl.vulkan.KHRDisplaySwapchain.VK_ERROR_INCOMPATIBLE_DISPLAY_KHR
 import org.lwjgl.vulkan.KHRSurface.VK_ERROR_NATIVE_WINDOW_IN_USE_KHR
 import org.lwjgl.vulkan.KHRSurface.VK_ERROR_SURFACE_LOST_KHR
 import org.lwjgl.vulkan.KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR
 import org.lwjgl.vulkan.KHRSwapchain.VK_SUBOPTIMAL_KHR
-import org.lwjgl.vulkan.VK10.VK_ERROR_DEVICE_LOST
-import org.lwjgl.vulkan.VK10.VK_ERROR_EXTENSION_NOT_PRESENT
-import org.lwjgl.vulkan.VK10.VK_ERROR_FEATURE_NOT_PRESENT
-import org.lwjgl.vulkan.VK10.VK_ERROR_FORMAT_NOT_SUPPORTED
-import org.lwjgl.vulkan.VK10.VK_ERROR_INCOMPATIBLE_DRIVER
-import org.lwjgl.vulkan.VK10.VK_ERROR_INITIALIZATION_FAILED
-import org.lwjgl.vulkan.VK10.VK_ERROR_LAYER_NOT_PRESENT
-import org.lwjgl.vulkan.VK10.VK_ERROR_MEMORY_MAP_FAILED
-import org.lwjgl.vulkan.VK10.VK_ERROR_OUT_OF_DEVICE_MEMORY
-import org.lwjgl.vulkan.VK10.VK_ERROR_OUT_OF_HOST_MEMORY
-import org.lwjgl.vulkan.VK10.VK_ERROR_TOO_MANY_OBJECTS
-import org.lwjgl.vulkan.VK10.VK_EVENT_RESET
-import org.lwjgl.vulkan.VK10.VK_EVENT_SET
-import org.lwjgl.vulkan.VK10.VK_INCOMPLETE
-import org.lwjgl.vulkan.VK10.VK_NOT_READY
-import org.lwjgl.vulkan.VK10.VK_SUCCESS
-import org.lwjgl.vulkan.VK10.VK_TIMEOUT
 import org.lwjgl.vulkan.VK11.*
-import org.lwjgl.vulkan.VkApplicationInfo
-import org.lwjgl.vulkan.VkInstance
-import org.lwjgl.vulkan.VkInstanceCreateInfo
 import java.nio.ByteBuffer
 import kotlin.contracts.ExperimentalContracts
 
@@ -41,7 +23,7 @@ typealias Vulkan = VkInstance
 /**
  * @return A [ByteBuffer] containing the receiver [String] UTF-8 encoded and null-terminated.
  */
-inline operator fun CharSequence.unaryPlus(): ByteBuffer = MemoryUtil.memUTF8(this)
+inline operator fun CharSequence.unaryPlus(): ByteBuffer = memUTF8(this)
 
 /**
  * @return A [Int] Vulkan representation of the receiver [ApplicationVersion].
@@ -102,6 +84,70 @@ inline fun vulkanInstanceCreateInfo(
         .sType(VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO)
         .pApplicationInfo(applicationInfo)
         .apply(transformer)
+}
+
+/**
+ * After initializing the Vulkan library through a [Vulkan] instance we need to look for and select a graphics
+ * card  in the system that supports the features we need. In fact we can select any number of graphics cards
+ * and use them simultaneously, but we'll stick to the first graphics card that suits our needs.
+ */
+fun Vulkan.findPhysicalDevice(): VkPhysicalDevice {
+    /**
+     * The graphics card that we'll end up selecting will be stored in a VkPhysicalDevice handle that is added
+     * as a new class member. This object will be implicitly destroyed when the [Vulkan] instance is destroyed,
+     * so we won't need to do anything new in the cleanup function.
+     */
+    val bufferDeviceCount = memAllocInt(1)
+
+    /**
+     * Listing the graphics cards is very similar to listing extensions and starts with querying just the
+     * number.
+     */
+    val result = vkEnumeratePhysicalDevices(this, bufferDeviceCount, null)
+    check(result == VK_SUCCESS) {
+        val translatedError = translateVulkanResult(result)
+        "Failed to create the Vulkan instance. ($result: $translatedError)"
+    }
+
+    // If there are 0 devices with Vulkan support then there is no point going further.
+    val deviceCount = bufferDeviceCount[0]
+    check(deviceCount != 0) { "Failed to find GPUs with Vulkan support!" }
+
+    val pointerPhysicalDevices = memAllocPointer(deviceCount)
+    vkEnumeratePhysicalDevices(this, bufferDeviceCount, pointerPhysicalDevices)
+
+    free(bufferDeviceCount)
+    free(pointerPhysicalDevices)
+
+    for(index in 0..pointerPhysicalDevices.capacity()) {
+        val device = VkPhysicalDevice(pointerPhysicalDevices[index], this)
+        if(isDeviceSuitable(device)) {
+            return device
+        }
+    }
+
+    throw IllegalStateException("Failed to find a suitable GPU.")
+}
+
+/**
+ * Function used in [findPhysicalDevice] to evaluate all devices and check if they are suitable for the
+ * operations we want to perform, because not all graphics cards are created equal.
+ * @return Whether the given device is suitable to [Vulkan].
+ */
+private fun isDeviceSuitable(device: VkPhysicalDevice): Boolean {
+    val queueFamilyCount = memAllocInt(1)
+    vkGetPhysicalDeviceQueueFamilyProperties(device, queueFamilyCount, null)
+
+    val queueFamilyProperties = VkQueueFamilyProperties.malloc(queueFamilyCount[0])
+    vkGetPhysicalDeviceQueueFamilyProperties(device, queueFamilyCount, queueFamilyProperties)
+
+    return queueFamilyProperties
+        .map(VkQueueFamilyProperties::queueFlags)
+        .any { it and VK_QUEUE_GRAPHICS_BIT != 0 }
+        .also {
+            queueFamilyProperties.free()
+            free(queueFamilyCount)
+        }
 }
 
 /**

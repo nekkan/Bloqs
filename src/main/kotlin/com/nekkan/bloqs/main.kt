@@ -131,13 +131,14 @@ fun main() {
      */
     val vulkanPointer = memAllocPointer(1)
     val result = vkCreateInstance(createInfo, null, vulkanPointer)
-    val handle = vulkanPointer[0]
 
     check(result == VK_SUCCESS) {
         val translatedError = translateVulkanResult(result)
         "Failed to create the Vulkan instance. ($result: $translatedError)"
     }
-    val vulkan = Vulkan(handle, createInfo) // Oriented-object instance wrapper around the long handle.
+
+    val vulkan = Vulkan(vulkanPointer[0], createInfo) // Oriented-object instance wrapper around the long handle.
+    val gpu = vulkan.findPhysicalDevice()
 
     // Free memory by deallocating everything used.
     free(vulkanPointer, pointerEnabledExtensionNames, pointerEnabledLayerNames)
