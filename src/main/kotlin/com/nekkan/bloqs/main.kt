@@ -16,7 +16,8 @@ import org.lwjgl.glfw.GLFW.*
 import org.lwjgl.glfw.GLFWVulkan.glfwGetRequiredInstanceExtensions
 import org.lwjgl.glfw.GLFWVulkan.glfwVulkanSupported
 import org.lwjgl.system.Configuration.DEBUG
-import org.lwjgl.system.MemoryUtil.*
+import org.lwjgl.system.MemoryUtil.NULL
+import org.lwjgl.system.MemoryUtil.memAllocPointer
 import org.lwjgl.vulkan.EXTDebugReport.VK_EXT_DEBUG_REPORT_EXTENSION_NAME
 import org.lwjgl.vulkan.VK11.*
 
@@ -139,13 +140,9 @@ fun main() {
     val vulkan = Vulkan(handle, createInfo) // Oriented-object instance wrapper around the long handle.
 
     // Free memory by deallocating everything used.
+    free(vulkanPointer, pointerEnabledExtensionNames, pointerEnabledLayerNames)
+    free(debugReportExtension, applicationInfo.pApplicationName(), applicationInfo.pEngineName())
     createInfo.free()
-    memFree(vulkanPointer)
-    memFree(pointerEnabledLayerNames)
-    memFree(debugReportExtension)
-    memFree(pointerEnabledExtensionNames)
-    memFree(applicationInfo.pApplicationName())
-    memFree(applicationInfo.pEngineName())
     applicationInfo.free()
 
     /**
