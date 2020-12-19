@@ -39,24 +39,6 @@ inline fun vulkanApplicationInfo(name: String, transformer: VkApplicationInfo.()
 }
 
 /**
- * Applies the application version if the [ApplicationVersion] is not equals to [ApplicationVersion.zero].
- */
-inline fun VkApplicationInfo.versionNonZero(version: ApplicationVersion) {
-    if(version != ApplicationVersion.zero) {
-        applicationVersion(version.vulkanVersion)
-    }
-}
-
-/**
- * Applies the engine version if the [ApplicationVersion] is not equals to [ApplicationVersion.zero].
- */
-inline fun VkApplicationInfo.engineVersionNonZero(version: ApplicationVersion) {
-    if(version != ApplicationVersion.zero) {
-        engineVersion(version.vulkanVersion)
-    }
-}
-
-/**
  * Returns a new instance of [VkInstanceCreateInfo] allocated with [VkInstanceCreateInfo.calloc] and apply the
  * [transformer] callback. This function is marked to use the [ExperimentalContracts] API to improve the
  * compatibility.

@@ -3,6 +3,7 @@
 
 package com.nekkan.bloqs.vulkan
 
+import com.nekkan.bloqs.utils.ApplicationVersion
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
 import java.nio.ByteBuffer
@@ -53,3 +54,20 @@ fun translateVulkanResult(result: Int): String = when(result) {
     else -> String.format("%s [%d]", "Unknown", Integer.valueOf(result))
 }
 
+/**
+ * Applies the application version if the [ApplicationVersion] is not equals to [ApplicationVersion.zero].
+ */
+inline fun VkApplicationInfo.versionNonZero(version: ApplicationVersion) {
+    if(version != ApplicationVersion.zero) {
+        applicationVersion(version.vulkanVersion)
+    }
+}
+
+/**
+ * Applies the engine version if the [ApplicationVersion] is not equals to [ApplicationVersion.zero].
+ */
+inline fun VkApplicationInfo.engineVersionNonZero(version: ApplicationVersion) {
+    if(version != ApplicationVersion.zero) {
+        engineVersion(version.vulkanVersion)
+    }
+}
