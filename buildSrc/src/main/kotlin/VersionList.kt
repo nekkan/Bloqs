@@ -6,4 +6,8 @@ object VersionList {
 
     const val lwjgl = "3.2.3"
 
+    const val kotlinLogging = "2.0.4"
+
+    const val slf4j = "1.7.29"
+
 }

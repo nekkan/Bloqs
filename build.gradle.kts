@@ -43,16 +43,20 @@ dependencies {
     implementation(group = "org.lwjgl", name = "lwjgl-opengl")
     implementation(group = "org.lwjgl", name = "lwjgl-stb")
     implementation(group = "org.lwjgl", name = "lwjgl-vulkan")
+    implementation(group = "org.lwjgl", name = "lwjgl-shaderc")
     runtimeOnly(group = "org.lwjgl", name = "lwjgl", classifier = lwjglNatives)
     runtimeOnly(group = "org.lwjgl", name = "lwjgl-assimp", classifier = lwjglNatives)
     runtimeOnly(group = "org.lwjgl", name = "lwjgl-glfw", classifier = lwjglNatives)
     runtimeOnly(group = "org.lwjgl", name = "lwjgl-openal", classifier = lwjglNatives)
     runtimeOnly(group = "org.lwjgl", name = "lwjgl-opengl", classifier = lwjglNatives)
+    runtimeOnly(group = "org.lwjgl", name = "lwjgl-shaderc", classifier = lwjglNatives)
     runtimeOnly(group = "org.lwjgl", name = "lwjgl-stb", classifier = lwjglNatives)
     if(lwjglNatives == "natives-macos") {
         runtimeOnly(group = "org.lwjgl", name = "lwjgl-vulkan", classifier = lwjglNatives)
     }
     implementation(group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version = VersionList.coroutines)
+    implementation(group = "org.slf4j", name = "slf4j-simple", version = VersionList.slf4j)
+    implementation(group = "io.github.microutils", name = "kotlin-logging", version = VersionList.kotlinLogging)
 }
 
 tasks.withType<KotlinCompile> {
