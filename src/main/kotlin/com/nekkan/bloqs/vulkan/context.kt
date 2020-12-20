@@ -8,9 +8,12 @@ import com.nekkan.bloqs.utils.ApplicationVersion
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.vulkan.VK11.*
 import org.lwjgl.vulkan.VkApplicationInfo
+import org.lwjgl.vulkan.VkDeviceCreateInfo
 import org.lwjgl.vulkan.VkDeviceQueueCreateInfo
 import org.lwjgl.vulkan.VkInstanceCreateInfo
 import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 
 /**
  * @return A [Int] Vulkan representation of the receiver [ApplicationVersion].
@@ -33,6 +36,9 @@ inline fun GlfwContext.applyHints() {
  */
 @OptIn(ExperimentalContracts::class)
 inline fun vulkanApplicationInfo(name: String, transformer: VkApplicationInfo.() -> Unit = {}): VkApplicationInfo {
+    contract {
+        callsInPlace(transformer, InvocationKind.EXACTLY_ONCE)
+    }
     return VkApplicationInfo.calloc()
         .sType(VK_STRUCTURE_TYPE_APPLICATION_INFO)
         .pApplicationName(+name)
@@ -49,6 +55,9 @@ inline fun vulkanInstanceCreateInfo(
     applicationInfo: VkApplicationInfo?,
     transformer: VkInstanceCreateInfo.() -> Unit
 ): VkInstanceCreateInfo {
+    contract {
+        callsInPlace(transformer, InvocationKind.EXACTLY_ONCE)
+    }
     return VkInstanceCreateInfo.calloc()
         .sType(VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO)
         .pApplicationInfo(applicationInfo)
@@ -61,12 +70,34 @@ inline fun vulkanInstanceCreateInfo(
  * the compatibility. The instance must be explicitly freed.
  */
 @OptIn(ExperimentalContracts::class)
-inline fun vulkanDeviceQueueCreateInfo(
+inline fun vulkanDeviceQueueCreateInfoBuffer(
     queueFamilyIndex: Int,
-    transformer: VkDeviceQueueCreateInfo.() -> Unit = {}
-): VkDeviceQueueCreateInfo {
-    return VkDeviceQueueCreateInfo.calloc()
+    transformer: VkDeviceQueueCreateInfo.Buffer.() -> Unit = {}
+): VkDeviceQueueCreateInfo.Buffer {
+    contract {
+        callsInPlace(transformer, InvocationKind.EXACTLY_ONCE)
+    }
+    return VkDeviceQueueCreateInfo.calloc(1)
         .sType(VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO)
         .queueFamilyIndex(queueFamilyIndex)
+        .apply(transformer)
+}
+
+/**
+ * Returns a new instance of [VkDeviceCreateInfo] allocated with [VkDeviceQueueCreateInfo.calloc] and apply the
+ * [transformer] callback. This function is marked to use the [ExperimentalContracts] API to improve the
+ * compatibility. The instance must be explicitly freed.
+ */
+@OptIn(ExperimentalContracts::class)
+inline fun vulkanDeviceCreateInfo(
+    queueCreateInfo: VkDeviceQueueCreateInfo.Buffer,
+    transformer: VkDeviceCreateInfo.() -> Unit = {}
+): VkDeviceCreateInfo {
+    contract {
+        callsInPlace(transformer, InvocationKind.EXACTLY_ONCE)
+    }
+    return VkDeviceCreateInfo.calloc()
+        .sType(VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO)
+        .pQueueCreateInfos(queueCreateInfo)
         .apply(transformer)
 }
