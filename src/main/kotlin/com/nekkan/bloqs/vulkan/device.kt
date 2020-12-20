@@ -13,10 +13,11 @@ import org.lwjgl.vulkan.VkQueueFamilyProperties
 
 /**
  * After initializing the Vulkan library through a [Vulkan] instance we need to look for and select a graphics
- * card  in the system that supports the features we need. In fact we can select any number of graphics cards
+ * card in the system that supports the features we need. In fact we can select any number of graphics cards
  * and use them simultaneously, but we'll stick to the first graphics card that suits our needs.
+ * @return A [Pair] instance that stores the created [Vulkan] instance and its matching queue family index.
  */
-fun Vulkan.findPhysicalDevice(): VkPhysicalDevice {
+fun Vulkan.findPhysicalDevice(): Pair<VkPhysicalDevice, Int> {
     /**
      * The graphics card that we'll end up selecting will be stored in a VkPhysicalDevice handle that is added
      * as a new class member. This object will be implicitly destroyed when the [Vulkan] instance is destroyed,
@@ -42,8 +43,14 @@ fun Vulkan.findPhysicalDevice(): VkPhysicalDevice {
 
     for(index in 0..pointerPhysicalDevices.capacity()) {
         val device = VkPhysicalDevice(pointerPhysicalDevices[index], this)
-        if(isDeviceSuitable(device)) {
-            return device
+
+        /**
+         * Evaluates all devices and check if they are suitable for the operations we want to perform, because
+         * not all graphics cards are created equal.
+         */
+        val queueFamily = findQueueFamilies(device)
+        if(queueFamily != null) {
+            return device to queueFamily
         }
     }
 
@@ -55,7 +62,12 @@ fun Vulkan.findPhysicalDevice(): VkPhysicalDevice {
  * operations we want to perform, because not all graphics cards are created equal.
  * @return Whether the given device is suitable to [Vulkan].
  */
-private fun isDeviceSuitable(device: VkPhysicalDevice): Boolean {
+@Deprecated(
+    "This function is obsolete and deprecated for removal.",
+    ReplaceWith("findQueueFamilies(device) != null"),
+    DeprecationLevel.ERROR
+)
+fun isDeviceSuitable(device: VkPhysicalDevice): Boolean {
     return findQueueFamilies(device) != null
 }
 
