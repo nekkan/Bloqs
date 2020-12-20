@@ -29,7 +29,9 @@ fun Vulkan.findPhysicalDevice(): Pair<VkPhysicalDevice, Int> {
      * Listing the graphics cards is very similar to listing extensions and starts with querying just the
      * number.
      */
-    vulkanCheck { vkEnumeratePhysicalDevices(this, bufferDeviceCount, null) }
+    vulkanCheck("physical devices count") {
+        vkEnumeratePhysicalDevices(this, bufferDeviceCount, null)
+    }
 
     // If there are 0 devices with Vulkan support then there is no point going further.
     val deviceCount = bufferDeviceCount[0]

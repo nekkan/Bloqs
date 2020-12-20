@@ -25,14 +25,14 @@ inline fun free(vararg structs: Struct) = structs.forEach {
 }
 
 @OptIn(ExperimentalContracts::class)
-inline fun vulkanCheck(callback: () -> Int): Int {
+inline fun vulkanCheck(name: String = "Vulkan instance", callback: () -> Int): Int {
     contract {
         callsInPlace(callback, InvocationKind.EXACTLY_ONCE)
     }
     val result = callback()
     check(result == VK11.VK_SUCCESS) {
         val translatedError = translateVulkanResult(result)
-        "Failed to create the Vulkan instance. ($result: $translatedError)"
+        "Failed to create the $name. ($result: $translatedError)"
     }
     return result
 }
