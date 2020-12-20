@@ -19,6 +19,7 @@ import org.lwjgl.system.Configuration.DEBUG
 import org.lwjgl.system.MemoryUtil.*
 import org.lwjgl.vulkan.EXTDebugReport.VK_EXT_DEBUG_REPORT_EXTENSION_NAME
 import org.lwjgl.vulkan.VK11.*
+import org.lwjgl.vulkan.VkDevice
 
 /**
  * A constant applied to each context that needs the application name.
@@ -167,7 +168,8 @@ fun main() {
     val deviceHandle = vulkanCheck("logical device") {
         vkCreateDevice(physicalDevice, deviceCreateInfo, null, pointerDevice)
     }
-    val device = pointerDevice[0]
+    // Oriented-object instance wrapper around the long handle.
+    val device = VkDevice(pointerDevice[0], physicalDevice, deviceCreateInfo)
 
     // Free memory by deallocating everything used.
     free(pointerVulkan, pointerDevice, pointerEnabledExtensionNames, pointerEnabledLayerNames, deviceQueueCreateInfo)
@@ -189,7 +191,24 @@ fun main() {
     glfwContext.applyHints()
 
     val window = glfwCreateWindow(windowContext.width, windowContext.height, windowContext.title, NULL, NULL)
-    while(!glfwWindowShouldClose(window)) {
-        glfwPollEvents()
+    window.startEventLoop()
+    vulkan.cleanup(window, device)
+}
+
+private tailrec fun Long.startEventLoop() {
+    if(glfwWindowShouldClose(this)) {
+        return
     }
+    glfwPollEvents()
+    startEventLoop()
+}
+
+private fun Vulkan.cleanup(window: Long, device: VkDevice) {
+    vkDestroyDevice(device, null)
+    if(validationLayers.isNotEmpty() && vkGetInstanceProcAddr(this, "vkDestroyDebugUtilsMessengerEXT") != NULL) {
+        // TODO
+    }
+    vkDestroyInstance(this, null)
+    glfwDestroyWindow(window)
+    glfwTerminate()
 }
