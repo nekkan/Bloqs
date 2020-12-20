@@ -4,6 +4,7 @@
 package com.nekkan.bloqs.vulkan
 
 import com.nekkan.bloqs.free
+import com.nekkan.bloqs.vulkanCheck
 import org.lwjgl.system.MemoryUtil.memAllocInt
 import org.lwjgl.system.MemoryUtil.memAllocPointer
 import org.lwjgl.vulkan.VK11.*
@@ -27,11 +28,7 @@ fun Vulkan.findPhysicalDevice(): VkPhysicalDevice {
      * Listing the graphics cards is very similar to listing extensions and starts with querying just the
      * number.
      */
-    val result = vkEnumeratePhysicalDevices(this, bufferDeviceCount, null)
-    check(result == VK_SUCCESS) {
-        val translatedError = translateVulkanResult(result)
-        "Failed to create the Vulkan instance. ($result: $translatedError)"
-    }
+    val result = vulkanCheck { vkEnumeratePhysicalDevices(this, bufferDeviceCount, null) }
 
     // If there are 0 devices with Vulkan support then there is no point going further.
     val deviceCount = bufferDeviceCount[0]

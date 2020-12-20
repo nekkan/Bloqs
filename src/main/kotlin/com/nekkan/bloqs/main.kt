@@ -19,7 +19,8 @@ import org.lwjgl.system.Configuration.DEBUG
 import org.lwjgl.system.MemoryUtil.NULL
 import org.lwjgl.system.MemoryUtil.memAllocPointer
 import org.lwjgl.vulkan.EXTDebugReport.VK_EXT_DEBUG_REPORT_EXTENSION_NAME
-import org.lwjgl.vulkan.VK11.*
+import org.lwjgl.vulkan.VK11.VK_API_VERSION_1_1
+import org.lwjgl.vulkan.VK11.vkCreateInstance
 
 /**
  * A constant applied to each context that needs the application name.
@@ -130,12 +131,7 @@ fun main() {
      * operation was not succeeded.
      */
     val vulkanPointer = memAllocPointer(1)
-    val result = vkCreateInstance(createInfo, null, vulkanPointer)
-
-    check(result == VK_SUCCESS) {
-        val translatedError = translateVulkanResult(result)
-        "Failed to create the Vulkan instance. ($result: $translatedError)"
-    }
+    val result = vulkanCheck { vkCreateInstance(createInfo, null, vulkanPointer) }
 
     val vulkan = Vulkan(vulkanPointer[0], createInfo) // Oriented-object instance wrapper around the long handle.
     val gpu = vulkan.findPhysicalDevice()
@@ -143,8 +139,7 @@ fun main() {
     // Free memory by deallocating everything used.
     free(vulkanPointer, pointerEnabledExtensionNames, pointerEnabledLayerNames)
     free(debugReportExtension, applicationInfo.pApplicationName(), applicationInfo.pEngineName())
-    createInfo.free()
-    applicationInfo.free()
+    free(createInfo, applicationInfo)
 
     /**
      * Apply default window hints to the context to avoid incompatibility. and create a [GlfwContext] by
