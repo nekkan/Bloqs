@@ -66,8 +66,11 @@ fun findQueueFamilies(device: VkPhysicalDevice): Int? {
     val queueFamilyProperties = VkQueueFamilyProperties.malloc(queueFamilyCount[0])
     vkGetPhysicalDeviceQueueFamilyProperties(device, queueFamilyCount, queueFamilyProperties)
 
-    return queueFamilyProperties
-        .map(VkQueueFamilyProperties::queueFlags)
-        .count { it and VK_QUEUE_GRAPHICS_BIT != 0 }
-        .takeIf { it > 0 }
+    for((count, queueFamilyProperty) in queueFamilyProperties.withIndex()) {
+        if(queueFamilyProperty.queueFlags() and VK_QUEUE_GRAPHICS_BIT != 0) {
+            return count
+        }
+    }
+
+    return null
 }
