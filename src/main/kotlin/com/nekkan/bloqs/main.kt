@@ -16,11 +16,9 @@ import org.lwjgl.glfw.GLFW.*
 import org.lwjgl.glfw.GLFWVulkan.glfwGetRequiredInstanceExtensions
 import org.lwjgl.glfw.GLFWVulkan.glfwVulkanSupported
 import org.lwjgl.system.Configuration.DEBUG
-import org.lwjgl.system.MemoryUtil.NULL
-import org.lwjgl.system.MemoryUtil.memAllocPointer
+import org.lwjgl.system.MemoryUtil.*
 import org.lwjgl.vulkan.EXTDebugReport.VK_EXT_DEBUG_REPORT_EXTENSION_NAME
-import org.lwjgl.vulkan.VK11.VK_API_VERSION_1_1
-import org.lwjgl.vulkan.VK11.vkCreateInstance
+import org.lwjgl.vulkan.VK11.*
 
 /**
  * A constant applied to each context that needs the application name.
@@ -56,7 +54,9 @@ else
 @get:JvmName("getLogger")
 val Bloqs = KotlinLogging.logger("com.nekkan.bloqs.Bloqs")
 
-private val windowContext = WindowContext(BLOQS_APPLICATION_NAME, 800, 600)
+private const val WIDTH = 800
+
+private const val HEIGHT = 600
 
 fun main() {
     /**
@@ -78,6 +78,7 @@ fun main() {
     check(glfwVulkanSupported()) { "GLFW failed to find the Vulkan loader." }
 
     val vulkanContext = VulkanContext(BLOQS_APPLICATION_NAME, version, "", version, VK_API_VERSION_1_1)
+    val windowContext = WindowContext(BLOQS_APPLICATION_NAME, WIDTH, HEIGHT)
 
     /**
      * Returns all required instance extensions or throw an [IllegalStateException] if not found at all.
@@ -100,7 +101,7 @@ fun main() {
      * General information about our [Vulkan] application, such as the name, the [Vulkan] version we are
      * targeting, the used engine, etc.
      */
-    val applicationInfo = vulkanApplicationInfo(BLOQS_APPLICATION_NAME) {
+    val vulkanApplicationInfo = vulkanApplicationInfo(BLOQS_APPLICATION_NAME) {
         pEngineName(+vulkanContext.engineName)
         versionNonZero(vulkanContext.applicationVersion)
         engineVersionNonZero(vulkanContext.engineVersion)
@@ -121,7 +122,7 @@ fun main() {
      * [Vulkan] uses many structures when creating something. This ensures that every information is available
      * internally and allows for easier validation and immutability.
      */
-    val createInfo = vulkanInstanceCreateInfo(applicationInfo) {
+    val vulkanCreateInfo = vulkanInstanceCreateInfo(vulkanApplicationInfo) {
         ppEnabledExtensionNames(pointerEnabledExtensionNames)
         ppEnabledLayerNames(pointerEnabledLayerNames)
     }
@@ -130,16 +131,53 @@ fun main() {
      * Create a [PointerBuffer] to hold the [Vulkan] instance or throws an [IllegalStateException] if the
      * operation was not succeeded.
      */
-    val vulkanPointer = memAllocPointer(1)
-    val result = vulkanCheck { vkCreateInstance(createInfo, null, vulkanPointer) }
+    val pointerVulkan = memAllocPointer(1)
+    vulkanCheck { vkCreateInstance(vulkanCreateInfo, null, pointerVulkan) }
 
-    val vulkan = Vulkan(vulkanPointer[0], createInfo) // Oriented-object instance wrapper around the long handle.
-    val gpu = vulkan.findPhysicalDevice()
+    // Oriented-object instance wrapper around the long handle.
+    val vulkan = Vulkan(pointerVulkan[0], vulkanCreateInfo)
+    val (physicalDevice, queueFamilyIndex) = vulkan.findPhysicalDevice()
+
+    /**
+     * The creation of a logical device involves specifying a bunch of details in structs again, of which the
+     * first one will be VkDeviceQueueCreateInfo. This structure describes the number of queues we want for a
+     * single queue family. Right now we're only interested in a queue with graphics capabilities.
+     */
+    val pointerQueuePriorities = memAllocFloat(1).put(1f)
+    val deviceQueueCreateInfo = vulkanDeviceQueueCreateInfoBuffer(queueFamilyIndex) {
+        pQueuePriorities(pointerQueuePriorities)
+    }
+
+    /**
+     * After selecting a physical device to use we need to set up a logical device to interface with it. The
+     * logical device creation process is similar to the instance creation process and describes the features
+     * we want to use. We also need to specify which queues to create now that we've queried which queue
+     * families are available.
+     */
+    val deviceCreateInfo = vulkanDeviceCreateInfo(deviceQueueCreateInfo) {
+        ppEnabledLayerNames(pointerEnabledLayerNames)
+        pNext(NULL)
+    }
+
+    /**
+     * That's it, we're now ready to instantiate the logical device with a call to the appropriately named
+     * `vkCreateDevice` function.
+     */
+    val pointerDevice = memAllocPointer(1)
+    val deviceHandle = vulkanCheck("logical device") {
+        vkCreateDevice(physicalDevice, deviceCreateInfo, null, pointerDevice)
+    }
+    val device = pointerDevice[0]
 
     // Free memory by deallocating everything used.
-    free(vulkanPointer, pointerEnabledExtensionNames, pointerEnabledLayerNames)
-    free(debugReportExtension, applicationInfo.pApplicationName(), applicationInfo.pEngineName())
-    free(createInfo, applicationInfo)
+    free(pointerVulkan, pointerDevice, pointerEnabledExtensionNames, pointerEnabledLayerNames, deviceQueueCreateInfo)
+    free(
+        debugReportExtension,
+        vulkanApplicationInfo.pApplicationName(),
+        vulkanApplicationInfo.pEngineName(),
+        pointerQueuePriorities
+    )
+    free(vulkanCreateInfo, vulkanApplicationInfo, deviceCreateInfo)
 
     /**
      * Apply default window hints to the context to avoid incompatibility. and create a [GlfwContext] by
@@ -150,8 +188,8 @@ fun main() {
     glfwDefaultWindowHints()
     glfwContext.applyHints()
 
-    val windowHandle = glfwCreateWindow(windowContext.width, windowContext.height, windowContext.title, NULL, NULL)
-    while(!glfwWindowShouldClose(windowHandle)) {
+    val window = glfwCreateWindow(windowContext.width, windowContext.height, windowContext.title, NULL, NULL)
+    while(!glfwWindowShouldClose(window)) {
         glfwPollEvents()
     }
 }
