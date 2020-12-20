@@ -68,9 +68,13 @@ fun findQueueFamilies(device: VkPhysicalDevice): Int? {
 
     for((count, queueFamilyProperty) in queueFamilyProperties.withIndex()) {
         if(queueFamilyProperty.queueFlags() and VK_QUEUE_GRAPHICS_BIT != 0) {
+            free(queueFamilyProperties)
+            free(queueFamilyCount)
             return count
         }
     }
 
+    free(queueFamilyProperties)
+    free(queueFamilyCount)
     return null
 }
