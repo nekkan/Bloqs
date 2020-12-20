@@ -28,7 +28,7 @@ fun Vulkan.findPhysicalDevice(): VkPhysicalDevice {
      * Listing the graphics cards is very similar to listing extensions and starts with querying just the
      * number.
      */
-    val result = vulkanCheck { vkEnumeratePhysicalDevices(this, bufferDeviceCount, null) }
+    vulkanCheck { vkEnumeratePhysicalDevices(this, bufferDeviceCount, null) }
 
     // If there are 0 devices with Vulkan support then there is no point going further.
     val deviceCount = bufferDeviceCount[0]
@@ -56,6 +56,10 @@ fun Vulkan.findPhysicalDevice(): VkPhysicalDevice {
  * @return Whether the given device is suitable to [Vulkan].
  */
 private fun isDeviceSuitable(device: VkPhysicalDevice): Boolean {
+    return findQueueFamilies(device) != null
+}
+
+fun findQueueFamilies(device: VkPhysicalDevice): Int? {
     val queueFamilyCount = memAllocInt(1)
     vkGetPhysicalDeviceQueueFamilyProperties(device, queueFamilyCount, null)
 
@@ -64,9 +68,6 @@ private fun isDeviceSuitable(device: VkPhysicalDevice): Boolean {
 
     return queueFamilyProperties
         .map(VkQueueFamilyProperties::queueFlags)
-        .any { it and VK_QUEUE_GRAPHICS_BIT != 0 }
-        .also {
-            queueFamilyProperties.free()
-            free(queueFamilyCount)
-        }
+        .count { it and VK_QUEUE_GRAPHICS_BIT != 0 }
+        .takeIf { it > 0 }
 }
